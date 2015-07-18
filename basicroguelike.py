@@ -31,15 +31,17 @@ libtcod.console_set_custom_font('terminal12x12_gs_ro.png',
                                 libtcod.FONT_LAYOUT_ASCII_INROW)
 libtcod.console_init_root(SCREEN_WIDTH, SCREEN_HEIGHT,
                           'basicroguelike', False)
+con = libtcod.console_new(SCREEN_WIDTH, SCREEN_HEIGHT)
 
 playerx = SCREEN_WIDTH / 2
 playery = SCREEN_HEIGHT / 2
 
 while not libtcod.console_is_window_closed():
-    libtcod.console_set_default_foreground(0, libtcod.white)
-    libtcod.console_put_char(0, playerx, playery, '@', libtcod.BKGND_NONE)
+    libtcod.console_set_default_foreground(con, libtcod.white)
+    libtcod.console_put_char(con, playerx, playery, '@', libtcod.BKGND_NONE)
+    libtcod.console_blit(con, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, 0, 0, 0)
     libtcod.console_flush()
-    libtcod.console_put_char(0, playerx, playery, ' ', libtcod.BKGND_NONE)
+    libtcod.console_put_char(con, playerx, playery, ' ', libtcod.BKGND_NONE)
     exit = handle_keys()
     if exit:
         break
