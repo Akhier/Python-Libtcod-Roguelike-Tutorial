@@ -100,11 +100,10 @@ con = libtcod.console_new(SCREEN_WIDTH, SCREEN_HEIGHT)
 player = Object(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2, '@', libtcod.white)
 npc = Object(SCREEN_WIDTH / 2 - 5, SCREEN_HEIGHT / 2, '@', libtcod.yellow)
 objects = [npc, player]
+make_map()
 
 while not libtcod.console_is_window_closed():
-    for object in objects:
-        object.draw()
-    libtcod.console_blit(con, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, 0, 0, 0)
+    render_all()
     libtcod.console_flush()
     for object in objects:
         object.clear()
