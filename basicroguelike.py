@@ -9,6 +9,7 @@ MAP_HEIGHT = 45
 ROOM_MAX_SIZE = 10
 ROOM_MIN_SIZE = 6
 MAX_ROOMS = 30
+MAX_ROOM_MONSTERS = 3
 
 FOV_ALGO = 0
 FOV_LIGHT_WALLS = True
@@ -119,6 +120,7 @@ def make_map():
                 break
             if not failed:
                 create_room(new_room)
+                place_objects(new_room)
                 (new_x, new_y) = new_room.center()
 
                 if num_rooms == 0:
@@ -135,6 +137,21 @@ def make_map():
 
                 rooms.append(new_room)
                 num_rooms += 1
+
+
+def place_objects(room):
+    num_monsters = libtcod.random_get_int(0, 0, MAX_ROOM_MONSTERS)
+
+    for i in range(num_monsters):
+        x = libtcod.random_get_int(0, room.x1, room.x2)
+        y = libtcod.random_get_int(0, room.y1, room.y2)
+
+        if libtcod.random_get_int(0, 0, 100) < 80:
+            monster = Object(x, y, 'o', libtcod.desaturated_green)
+        else:
+            monster = Object(x, y, 'T', libtcod.darker_green)
+
+        objects.append(monster)
 
 
 def render_all():
