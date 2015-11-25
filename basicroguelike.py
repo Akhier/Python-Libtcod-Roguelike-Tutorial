@@ -240,20 +240,16 @@ def handle_keys():
 
     if game_state == 'playing':
         if libtcod.console_is_key_pressed(libtcod.KEY_UP):
-            player.move(0, -1)
-            fov_recompute = True
+            player_move_or_attack(0, -1)
 
         if libtcod.console_is_key_pressed(libtcod.KEY_DOWN):
-            player.move(0, 1)
-            fov_recompute = True
+            player_move_or_attack(0, 1)
 
         if libtcod.console_is_key_pressed(libtcod.KEY_LEFT):
-            player.move(-1, 0)
-            fov_recompute = True
+            player_move_or_attack(-1, 0)
 
         if libtcod.console_is_key_pressed(libtcod.KEY_RIGHT):
-            player.move(1, 0)
-            fov_recompute = True
+            player_move_or_attack(1, 0)
 
         else:
             return 'didnt-take-turn'
