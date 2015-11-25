@@ -56,13 +56,11 @@ def render_all():
         for x in range(MAP_WIDTH):
             wall = map[x][y].block_sight
             if wall:
-                libtcod.console_set_char_background(con, x, y,
-                                                    color_dark_wall,
-                                                    libtcod.BKGND_SET)
+                libtcod.console_put_char_ex(con, x, y, '#', libtcod.white,
+                                            color_dark_ground)
             else:
-                libtcod.console_set_char_background(con, x, y,
-                                                    color_dark_ground,
-                                                    libtcod.BKGND_SET)
+                libtcod.console_put_char_ex(con, x, y, '.', libtcod.white,
+                                            color_dark_ground)
 
     for object in objects:
         object.draw()
