@@ -24,6 +24,8 @@ class Tile:
     def __init__(self, blocked, block_sight=None):
         self.blocked = blocked
 
+        self.explored = False
+
         if block_sight is None:
             block_sight = blocked
         self.block_sight = block_sight
@@ -149,14 +151,15 @@ def render_all():
                 visible = libtcod.map_is_in_fov(fov_map, x, y)
                 wall = map[x][y].block_sight
                 if not visible:
-                    if wall:
-                        libtcod.console_put_char_ex(con, x, y, '#',
-                                                    libtcod.white,
-                                                    color_dark_wall)
-                    else:
-                        libtcod.console_put_char_ex(con, x, y, '.',
-                                                    libtcod.white,
-                                                    color_dark_ground)
+                    if map[x][y].explored:
+                        if wall:
+                            libtcod.console_put_char_ex(con, x, y, '#',
+                                                        libtcod.white,
+                                                        color_dark_wall)
+                        else:
+                            libtcod.console_put_char_ex(con, x, y, '.',
+                                                        libtcod.white,
+                                                        color_dark_ground)
                 else:
                     if wall:
                         libtcod.console_put_char_ex(con, x, y, '#',
@@ -166,6 +169,7 @@ def render_all():
                         libtcod.console_put_char_ex(con, x, y, '.',
                                                     libtcod.white,
                                                     color_light_ground)
+                    map[x][y].explored = True
 
     for object in objects:
         object.draw()
