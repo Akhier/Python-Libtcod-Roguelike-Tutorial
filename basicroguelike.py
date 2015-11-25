@@ -210,6 +210,25 @@ def render_all():
     libtcod.console_blit(con, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, 0, 0, 0)
 
 
+def player_move_or_attack(dx, dy):
+    global fov_recompute
+
+    x = player.x + dx
+    y = player.y + dy
+
+    target = None
+    for object in objects:
+        if object.x == x and object.y == y:
+            target = object
+            break
+
+    if target is not None:
+        print 'The ' + target.name + ' dodges.'
+    else:
+        player.move(dx, dy)
+        fov_recompute = True
+
+
 def handle_keys():
     global fov_recompute
     key = libtcod.console_wait_for_keypress(True)
@@ -269,3 +288,8 @@ while not libtcod.console_is_window_closed():
     player_action = handle_keys()
     if player_action == 'exit':
         break
+
+    if game_state == 'playing' and player_action == 'didnt-take-turn':
+        for object in objects:
+            if object != player:
+                print 'The ' + object.name + ' growls!'
