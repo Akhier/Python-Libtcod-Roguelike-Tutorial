@@ -2,6 +2,19 @@ import libtcodpy as libtcod
 
 SCREEN_WIDTH = 80
 SCREEN_HEIGHT = 50
+MAP_WIDTH = 80
+MAP_HEIGHT = 45
+color_dark_wall = libtcod.Color(0, 0, 100)
+color_dark_ground = libtcod.Color(50, 50, 150)
+
+
+class Tile:
+    def __init__(self, blocked, block_sight=None):
+        self.blocked = blocked
+
+        if block_sight is None:
+            block_sight = blocked
+        self.block_sight = block_sight
 
 
 class Object:
@@ -12,8 +25,9 @@ class Object:
         self.color = color
 
     def move(self, dx, dy):
-        self.x += dx
-        self.y += dy
+        if not map[self.x + dx][self.y + dy].blocked:
+            self.x += dx
+            self.y += dy
 
     def draw(self):
         libtcod.console_set_default_foreground(con, self.color)
@@ -22,6 +36,38 @@ class Object:
 
     def clear(self):
         libtcod.console_put_char(con, self.x, self.y, ' ', libtcod.BKGND_NONE)
+
+
+def make_map():
+    global map
+
+    map = [[Tile(False)
+           for y in range(MAP_HEIGHT)]
+           for x in range(MAP_WIDTH)]
+
+    map[30][22].blocked = True
+    map[30][22].block_sight = True
+    map[50][22].blocked = True
+    map[50][22].block_sight = True
+
+
+def render_all():
+    for y in range(MAP_HEIGHT):
+        for x in range(MAP_WIDTH):
+            wall = map[x][y].block_sight
+            if wall:
+                libtcod.console_set_char_background(con, x, y,
+                                                    color_dark_wall,
+                                                    libtcod.BKGND_SET)
+            else:
+                libtcod.console_set_char_background(con, x, y,
+                                                    color_dark_ground,
+                                                    libtcod.BKGND_SET)
+
+    for object in objects:
+        object.draw()
+
+    libtcod.console_blit(con, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, 0, 0, 0)
 
 
 def handle_keys():
