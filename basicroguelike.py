@@ -50,14 +50,16 @@ class Rect:
 
 
 class Object:
-    def __init__(self, x, y, char, color):
+    def __init__(self, x, y, char, name, color, blocks=False):
         self.x = x
         self.y = y
         self.char = char
+        self.name = name
         self.color = color
+        self.blocks = blocks
 
     def move(self, dx, dy):
-        if not map[self.x + dx][self.y + dy].blocked:
+        if not is_blocked(self.x + dx, self.y + dy):
             self.x += dx
             self.y += dy
 
@@ -71,6 +73,17 @@ class Object:
         if libtcod.map_is_in_fov(fov_map, self.x, self.y):
             libtcod.console_put_char_ex(con, self.x, self.y, '.',
                                         libtcod.white, libtcod.dark_blue)
+
+
+def is_blocked(x, y):
+    if map[x][y].blocked:
+        return True
+
+    for object in objects:
+        if object.blocks and object.x == x and object.y == y:
+            return True
+
+    return False
 
 
 def create_room(room):
@@ -146,10 +159,13 @@ def place_objects(room):
         x = libtcod.random_get_int(0, room.x1, room.x2)
         y = libtcod.random_get_int(0, room.y1, room.y2)
 
-        if libtcod.random_get_int(0, 0, 100) < 80:
-            monster = Object(x, y, 'o', libtcod.desaturated_green)
-        else:
-            monster = Object(x, y, 'T', libtcod.darker_green)
+        if not is_blocked(x, y):
+            if libtcod.random_get_int(0, 0, 100) < 80:
+                monster = Object(x, y, 'o', 'orc', libtcod.desaturated_green,
+                                 blocks=True)
+            else:
+                monster = Object(x, y, 'T', 'troll', libtcod.darker_green,
+                                 blocks=True)
 
         objects.append(monster)
 
@@ -226,9 +242,8 @@ libtcod.console_init_root(SCREEN_WIDTH, SCREEN_HEIGHT,
                           'basicroguelike', False)
 con = libtcod.console_new(SCREEN_WIDTH, SCREEN_HEIGHT)
 
-player = Object(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2, '@', libtcod.white)
-npc = Object(SCREEN_WIDTH / 2 - 5, SCREEN_HEIGHT / 2, '@', libtcod.yellow)
-objects = [npc, player]
+player = Object(0, 0, '@', 'Player', libtcod.white, blocks=True)
+objects = [player]
 make_map()
 fov_map = libtcod.map_new(MAP_WIDTH, MAP_HEIGHT)
 for y in range(MAP_HEIGHT):
