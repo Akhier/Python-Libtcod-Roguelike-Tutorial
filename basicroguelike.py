@@ -1,5 +1,6 @@
 import libtcodpy as libtcod
 import math
+import textwrap
 
 SCREEN_WIDTH = 80
 SCREEN_HEIGHT = 50
@@ -7,7 +8,7 @@ SCREEN_HEIGHT = 50
 MAP_WIDTH = 80
 MAP_HEIGHT = 43
 
-BAR_WIDTH = 80
+BAR_WIDTH = 20
 PANEL_HEIGHT = 7
 PANEL_Y = SCREEN_HEIGHT - PANEL_HEIGHT
 MSG_X = BAR_WIDTH + 2
@@ -22,6 +23,8 @@ MAX_ROOM_MONSTERS = 3
 FOV_ALGO = 0
 FOV_LIGHT_WALLS = True
 TORCH_RADIUS = 10
+
+LIMIT_FPS = 20
 
 color_dark_wall = libtcod.Color(0, 0, 100)
 color_light_wall = libtcod.Color(130, 110, 50)
@@ -107,7 +110,7 @@ class Object:
     def clear(self):
         if libtcod.map_is_in_fov(fov_map, self.x, self.y):
             libtcod.console_put_char_ex(con, self.x, self.y, '.',
-                                        libtcod.white, libtcod.dark_blue)
+                                        libtcod.white, color_light_ground)
 
 
 class Fighter:
@@ -205,25 +208,25 @@ def make_map():
             if new_room.intersect(other_room):
                 failed = True
                 break
-            if not failed:
-                create_room(new_room)
-                place_objects(new_room)
-                (new_x, new_y) = new_room.center()
+        if not failed:
+            create_room(new_room)
+            place_objects(new_room)
+            (new_x, new_y) = new_room.center()
 
-                if num_rooms == 0:
-                    player.x = new_x
-                    player.y = new_y
+            if num_rooms == 0:
+                player.x = new_x
+                player.y = new_y
+            else:
+                (prev_x, prev_y) = rooms[num_rooms - 1].center()
+                if libtcod.random_get_int(0, 0, 1) == 1:
+                    create_h_tunnel(prev_x, new_x, prev_y)
+                    create_v_tunnel(prev_y, new_y, new_x)
                 else:
-                    (prev_x, prev_y) = rooms[num_rooms - 1].center()
-                    if libtcod.random_get_int(0, 0, 1) == 1:
-                        create_h_tunnel(prev_x, new_x, prev_y)
-                        create_v_tunnel(prev_y, new_y, new_x)
-                    else:
-                        create_v_tunnel(prev_y, new_y, prev_x)
-                        create_h_tunnel(prev_x, new_x, new_y)
+                    create_v_tunnel(prev_y, new_y, prev_x)
+                    create_h_tunnel(prev_x, new_x, new_y)
 
-                rooms.append(new_room)
-                num_rooms += 1
+            rooms.append(new_room)
+            num_rooms += 1
 
 
 def place_objects(room):
@@ -251,7 +254,7 @@ def place_objects(room):
                                  blocks=True, fighter=fighter_component,
                                  ai=ai_component)
 
-        objects.append(monster)
+            objects.append(monster)
 
 
 def render_bar(x, y, total_width, name, value, maximum, bar_color, back_color):
@@ -316,6 +319,13 @@ def render_all():
     libtcod.console_set_default_background(panel, libtcod.black)
     libtcod.console_clear(panel)
 
+    y = 1
+    for (line, color) in game_msgs:
+        libtcod.console_set_default_foreground(panel, color)
+        libtcod.console_print_ex(panel, MSG_X, y, libtcod.BKGND_NONE,
+                                 libtcod.LEFT, line)
+        y += 1
+
     render_bar(1, 1, BAR_WIDTH, 'HP', player.fighter.hp,
                player.fighter.max_hp, libtcod.light_red, libtcod.darker_red)
 
@@ -326,6 +336,16 @@ def render_all():
 
     libtcod.console_blit(panel, 0, 0, SCREEN_WIDTH, PANEL_HEIGHT,
                          0, 0, PANEL_Y)
+
+
+def message(new_msg, color=libtcod.white):
+    new_msg_lines = textwrap.wrap(new_msg, MSG_WIDTH)
+
+    for line in new_msg_lines:
+        if len(game_msgs) == MSG_HEIGHT:
+            del game_msgs[0]
+
+        game_msgs.append((line, color))
 
 
 def player_move_or_attack(dx, dy):
@@ -397,6 +417,7 @@ libtcod.console_set_custom_font('terminal12x12_gs_ro.png',
                                 libtcod.FONT_LAYOUT_ASCII_INROW)
 libtcod.console_init_root(SCREEN_WIDTH, SCREEN_HEIGHT,
                           'basicroguelike', False)
+libtcod.sys_set_fps(LIMIT_FPS)
 con = libtcod.console_new(SCREEN_WIDTH, SCREEN_HEIGHT)
 panel = libtcod.console_new(SCREEN_WIDTH, PANEL_HEIGHT)
 
@@ -415,6 +436,10 @@ for y in range(MAP_HEIGHT):
 fov_recompute = True
 game_state = 'playing'
 player_action = None
+game_msgs = []
+
+message('Welcome stranger. Prepare to perish in the Tombs of ' +
+        'the Ancient Kings.', libtcod.red)
 
 while not libtcod.console_is_window_closed():
     render_all()
