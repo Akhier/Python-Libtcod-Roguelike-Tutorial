@@ -50,13 +50,21 @@ class Rect:
 
 
 class Object:
-    def __init__(self, x, y, char, name, color, blocks=False):
+    def __init__(self, x, y, char, name, color,
+                 blocks=False, fighter=None, ai=None):
         self.x = x
         self.y = y
         self.char = char
         self.name = name
         self.color = color
         self.blocks = blocks
+        self.fighter = fighter
+        if self.fighter:
+            self.fighter.owner = self
+
+        self.ai = ai
+        if self.ai:
+            self.ai.owner = self
 
     def move(self, dx, dy):
         if not is_blocked(self.x + dx, self.y + dy):
@@ -73,6 +81,19 @@ class Object:
         if libtcod.map_is_in_fov(fov_map, self.x, self.y):
             libtcod.console_put_char_ex(con, self.x, self.y, '.',
                                         libtcod.white, libtcod.dark_blue)
+
+
+class Fighter:
+    def __init__(self, hp, defense, power):
+        self.max_hp = hp
+        self.hp = hp
+        self.defense = defense
+        self.power = power
+
+
+class BasicMonster:
+    def take_turn(self):
+        print 'The ' + self.owner.name + ' growls!'
 
 
 def is_blocked(x, y):
@@ -161,11 +182,19 @@ def place_objects(room):
 
         if not is_blocked(x, y):
             if libtcod.random_get_int(0, 0, 100) < 80:
+                fighter_component = Fighter(hp=10, defense=0, power=3)
+                ai_component = BasicMonster()
+
                 monster = Object(x, y, 'o', 'orc', libtcod.desaturated_green,
-                                 blocks=True)
+                                 blocks=True, fighter=fighter_component,
+                                 ai=ai_component)
             else:
+                fighter_component = Fighter(hp=16, defense=1, power=4)
+                ai_component = BasicMonster()
+
                 monster = Object(x, y, 'T', 'troll', libtcod.darker_green,
-                                 blocks=True)
+                                 blocks=True, fighter=fighter_component,
+                                 ai=ai_component)
 
         objects.append(monster)
 
@@ -261,7 +290,9 @@ libtcod.console_init_root(SCREEN_WIDTH, SCREEN_HEIGHT,
                           'basicroguelike', False)
 con = libtcod.console_new(SCREEN_WIDTH, SCREEN_HEIGHT)
 
-player = Object(0, 0, '@', 'Player', libtcod.white, blocks=True)
+fighter_component = Fighter(hp=30, defense=2, power=5)
+player = Object(0, 0, '@', 'Player', libtcod.white,
+                blocks=True, fighter=fighter_component)
 objects = [player]
 make_map()
 fov_map = libtcod.map_new(MAP_WIDTH, MAP_HEIGHT)
