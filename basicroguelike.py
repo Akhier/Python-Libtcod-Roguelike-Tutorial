@@ -275,6 +275,16 @@ def render_bar(x, y, total_width, name, value, maximum, bar_color, back_color):
                              name + ': ' + str(value) + '/' + str(maximum))
 
 
+def get_name_under_mouse():
+    global mouse
+
+    (x, y) = (mouse.cx, mouse.cy)
+    names = [obj.name for obj in objects if obj.x == x and obj.y == y and
+             libtcod.map_is_in_fov(fov_map, obj.x, obj.y)]
+    names = ', '.join(names)
+    return names.capitalize()
+
+
 def render_all():
     global fov_map, color_dark_wall, color_light_wall
     global color_dark_ground, color_light_ground
@@ -334,6 +344,10 @@ def render_all():
                              libtcod.LEFT, 'HP: ' + str(player.fighter.hp)
                              + '/' + str(player.fighter.max_hp))
 
+    libtcod.console_set_default_foreground(panel, libtcod.light_gray)
+    libtcod.console_print_ex(panel, 1, 0, libtcod.BKGND_NONE, libtcod.LEFT,
+                             get_name_under_mouse())
+
     libtcod.console_blit(panel, 0, 0, SCREEN_WIDTH, PANEL_HEIGHT,
                          0, 0, PANEL_Y)
 
@@ -368,8 +382,7 @@ def player_move_or_attack(dx, dy):
 
 
 def handle_keys():
-    global fov_recompute
-    key = libtcod.console_wait_for_keypress(True)
+    global key
     if key.vk == libtcod.KEY_ENTER and key.lalt:
         libtcod.console_set_fullscreen(not libtcod.console_is_fullscreen())
 
@@ -377,16 +390,16 @@ def handle_keys():
         return 'exit'
 
     if game_state == 'playing':
-        if libtcod.console_is_key_pressed(libtcod.KEY_UP):
+        if key.vk == libtcod.KEY_UP:
             player_move_or_attack(0, -1)
 
-        if libtcod.console_is_key_pressed(libtcod.KEY_DOWN):
+        if key.vk == libtcod.KEY_DOWN:
             player_move_or_attack(0, 1)
 
-        if libtcod.console_is_key_pressed(libtcod.KEY_LEFT):
+        if key.vk == libtcod.KEY_LEFT:
             player_move_or_attack(-1, 0)
 
-        if libtcod.console_is_key_pressed(libtcod.KEY_RIGHT):
+        if key.vk == libtcod.KEY_RIGHT:
             player_move_or_attack(1, 0)
 
         else:
@@ -441,7 +454,12 @@ game_msgs = []
 message('Welcome stranger. Prepare to perish in the Tombs of ' +
         'the Ancient Kings.', libtcod.red)
 
+mouse = libtcod.Mouse()
+key = libtcod.Key()
+
 while not libtcod.console_is_window_closed():
+    libtcod.sys_check_for_event(libtcod.EVENT_KEY_PRESS |
+                                libtcod.EVENT_MOUSE, key, mouse)
     render_all()
     libtcod.console_flush()
 
