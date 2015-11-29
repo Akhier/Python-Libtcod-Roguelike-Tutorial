@@ -25,6 +25,8 @@ MAX_ROOM_ITEMS = 2
 HEAL_AMOUNT = 4
 LIGHTNING_DAMAGE = 20
 LIGHTNING_RANGE = 5
+CONFUSE_RANGE = 8
+CONFUSE_NUM_TURNS = 10
 
 FOV_ALGO = 0
 FOV_LIGHT_WALLS = True
@@ -172,6 +174,23 @@ class BasicMonster:
                 monster.fighter.attack(player)
 
 
+class ConfusedMonster:
+
+    def __init__(self, old_ai, num_turns=CONFUSE_NUM_TURNS):
+        self.old_ai = old_ai
+        self.num_turns = num_turns
+
+    def take_turn(self):
+        if self.num_turns > 0:
+            self.owner.move(libtcod.random_get_int(0, -1, 1),
+                            libtcod.random_get_int(0, -1, 1))
+            self.num_turns -= 1
+        else:
+            self.owner.ai = self.old_ai
+            message('The ' + self.owner.name +
+                    ' is no longer confused.', libtcod.red)
+
+
 class Item:
 
     def __init__(self, use_function=None):
@@ -309,9 +328,13 @@ def place_objects(room):
                 item_component = Item(use_function=cast_heal)
                 item = Object(x, y, '!', 'healing potion',
                               libtcod.violet, item=item_component)
-            else:
+            elif dice < 70+15:
                 item_component = Item(use_function=cast_lightning)
                 item = Object(x, y, '#', 'scroll of lightning bolt',
+                              libtcod.light_yellow, item=item_component)
+            else:
+                item_component = Item(use_function=cast_confuse)
+                item = Object(x, y, '#', 'scroll of confusion',
                               libtcod.light_yellow, item=item_component)
             objects.append(item)
             item.send_to_back()
@@ -585,6 +608,20 @@ def cast_lightning():
             str(LIGHTNING_DAMAGE) + ' hit points.',
             libtcod.light_blue)
     monster.fighter.take_damage(LIGHTNING_DAMAGE)
+
+
+def cast_confuse():
+    monster = closest_monster(CONFUSE_RANGE)
+    if monster is None:
+        message('No enemy is close enough to confuse', libtcod.red)
+        return 'cancelled'
+
+    old_ai = monster.ai
+    monster.ai = ConfusedMonster(old_ai)
+    monster.ai.owner = monster
+    message('The eyes of the ' + monster.name +
+            ' look vacant, as he starts to stumble around.',
+            libtcod.light_green)
 
 libtcod.console_set_custom_font('terminal12x12_gs_ro.png',
                                 libtcod.FONT_TYPE_GREYSCALE |
