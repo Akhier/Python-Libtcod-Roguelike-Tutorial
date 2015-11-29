@@ -22,6 +22,8 @@ MAX_ROOMS = 30
 MAX_ROOM_MONSTERS = 3
 MAX_ROOM_ITEMS = 2
 
+HEAL_AMOUNT = 4
+
 FOV_ALGO = 0
 FOV_LIGHT_WALLS = True
 TORCH_RADIUS = 10
@@ -146,6 +148,11 @@ class Fighter:
                 if function is not None:
                     function(self.owner)
 
+    def heal(self, amount):
+        self.hp += amount
+        if self.hp > self.max_hp:
+            self.hp = self.max_hp
+
 
 class BasicMonster:
     def take_turn(self):
@@ -159,6 +166,9 @@ class BasicMonster:
 
 
 class Item:
+    def __init__(self, use_function=None):
+        self.use_function = use_function
+
     def pick_up(self):
         if len(inventory) >= 26:
             message('Your inventory is full, you cannot pick up ' +
@@ -167,6 +177,13 @@ class Item:
             inventory.append(self.owner)
             objects.remove(self.owner)
             message('You picked up a ' + self.owner.name + '.', libtcod.green)
+
+    def use(self):
+        if self.use_function is None:
+            message('The ' + self.owner.name + ' cannot be used.')
+        else:
+            if self.use_function() != 'cancelled':
+                inventory.remove(self.owner)
 
 
 def is_blocked(x, y):
@@ -508,6 +525,15 @@ def monster_death(monster):
     monster.ai = None
     monster.name = 'remains of ' + monster.name
     monster.send_to_back()
+
+
+def cast_heal():
+    if player.fighter.hp == player.fighter.max_hp:
+        message('You are already at full health.', libtcod.red)
+        return 'cancel'
+
+    message('Your wounds start to feel better.', libtcod.light_violet)
+    player.fighter.heal(HEAL_AMOUNT)
 
 libtcod.console_set_custom_font('terminal12x12_gs_ro.png',
                                 libtcod.FONT_TYPE_GREYSCALE |
