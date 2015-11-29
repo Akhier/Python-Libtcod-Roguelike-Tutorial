@@ -23,6 +23,8 @@ MAX_ROOM_MONSTERS = 3
 MAX_ROOM_ITEMS = 2
 
 HEAL_AMOUNT = 4
+LIGHTNING_DAMAGE = 20
+LIGHTNING_RANGE = 5
 
 FOV_ALGO = 0
 FOV_LIGHT_WALLS = True
@@ -37,6 +39,7 @@ color_light_ground = libtcod.Color(200, 180, 50)
 
 
 class Tile:
+
     def __init__(self, blocked, block_sight=None):
         self.blocked = blocked
 
@@ -48,6 +51,7 @@ class Tile:
 
 
 class Rect:
+
     def __init__(self, x, y, w, h):
         self.x1 = x
         self.y1 = y
@@ -65,6 +69,7 @@ class Rect:
 
 
 class Object:
+
     def __init__(self, x, y, char, name, color, blocks=False,
                  fighter=None, ai=None, item=None):
         self.x = x
@@ -122,6 +127,7 @@ class Object:
 
 
 class Fighter:
+
     def __init__(self, hp, defense, power, death_function=None):
         self.max_hp = hp
         self.hp = hp
@@ -133,12 +139,12 @@ class Fighter:
         damage = self.power - target.fighter.defense
 
         if damage > 0:
-            print self.owner.name.capitalize() + ' attacks ' + \
-                  target.name + ' for ' + str(damage) + ' hit points.'
+            print(self.owner.name.capitalize() + ' attacks ' +
+                  target.name + ' for ' + str(damage) + ' hit points.')
             target.fighter.take_damage(damage)
         else:
-            print self.owner.name.capitalize() + ' attacks ' + \
-                  target.name + ' but it has no effect.'
+            print(self.owner.name.capitalize() + ' attacks ' +
+                  target.name + ' but it has no effect.')
 
     def take_damage(self, damage):
         if damage > 0:
@@ -155,6 +161,7 @@ class Fighter:
 
 
 class BasicMonster:
+
     def take_turn(self):
         monster = self.owner
         if libtcod.map_is_in_fov(fov_map, monster.x, monster.y):
@@ -166,6 +173,7 @@ class BasicMonster:
 
 
 class Item:
+
     def __init__(self, use_function=None):
         self.use_function = use_function
 
@@ -222,8 +230,7 @@ def create_v_tunnel(y1, y2, x):
 def make_map():
     global map, player
 
-    map = [[Tile(True)
-           for y in range(MAP_HEIGHT)]
+    map = [[Tile(True) for y in range(MAP_HEIGHT)]
            for x in range(MAP_WIDTH)]
 
     rooms = []
@@ -297,9 +304,15 @@ def place_objects(room):
         y = libtcod.random_get_int(0, room.y1 + 1, room.y2 - 1)
 
         if not is_blocked(x, y):
-            item_component = Item(use_function=cast_heal)
-            item = Object(x, y, '!', 'healing potion',
-                          libtcod.violet, item=item_component)
+            dice = libtcod.random_get_int(0, 0, 100)
+            if dice < 70:
+                item_component = Item(use_function=cast_heal)
+                item = Object(x, y, '!', 'healing potion',
+                              libtcod.violet, item=item_component)
+            else:
+                item_component = Item(use_function=cast_lightning)
+                item = Object(x, y, '#', 'scroll of lightning bolt',
+                              libtcod.light_yellow, item=item_component)
             objects.append(item)
             item.send_to_back()
 
@@ -520,7 +533,7 @@ def handle_keys():
 
 def player_death(player):
     global game_state
-    print 'you died.'
+    print('you died.')
     game_state = 'dead'
 
     player.char = '%'
@@ -528,7 +541,7 @@ def player_death(player):
 
 
 def monster_death(monster):
-    print monster.name.capitalize() + ' is dead.'
+    print(monster.name.capitalize() + ' is dead.')
     monster.char = '%'
     monster.color = libtcod.dark_red
     monster.blocks = False
@@ -538,6 +551,20 @@ def monster_death(monster):
     monster.send_to_back()
 
 
+def closest_monster(max_range):
+    closest_enemy = None
+    closest_dist = max_range + 1
+
+    for object in objects:
+        if object.fighter and not object == player and \
+           libtcod.map_is_in_fov(fov_map, object.x, object.y):
+            dist = player.distance_to(object)
+            if dist < closest_dist:
+                closest_enemy = object
+                closest_dist = dist
+    return closest_enemy
+
+
 def cast_heal():
     if player.fighter.hp == player.fighter.max_hp:
         message('You are already at full health.', libtcod.red)
@@ -545,6 +572,19 @@ def cast_heal():
 
     message('Your wounds start to feel better.', libtcod.light_violet)
     player.fighter.heal(HEAL_AMOUNT)
+
+
+def cast_lightning():
+    monster = closest_monster(LIGHTNING_RANGE)
+    if monster is None:
+        message('No enemy is close enough to strike.', libtcod.red)
+        return 'cancelled'
+
+    message('A lightning bolt strikes the ' + monster.name +
+            ' with a loud thunder! the damage is ' +
+            str(LIGHTNING_DAMAGE) + ' hit points.',
+            libtcod.light_blue)
+    monster.fighter.take_damage(LIGHTNING_DAMAGE)
 
 libtcod.console_set_custom_font('terminal12x12_gs_ro.png',
                                 libtcod.FONT_TYPE_GREYSCALE |
