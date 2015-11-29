@@ -297,7 +297,7 @@ def place_objects(room):
         y = libtcod.random_get_int(0, room.y1 + 1, room.y2 - 1)
 
         if not is_blocked(x, y):
-            item_component = Item()
+            item_component = Item(use_function=cast_heal)
             item = Object(x, y, '!', 'healing potion',
                           libtcod.violet, item=item_component)
             objects.append(item)
@@ -456,7 +456,12 @@ def menu(header, options, width):
     libtcod.console_blit(window, 0, 0, width, height, 0, x, y, 1.0, 0.7)
 
     libtcod.console_flush()
-    key = libtcod.console_wait_for_keypress()
+    key = libtcod.console_wait_for_keypress(True)
+
+    index = key.c - ord('a')
+    if index >= 0 and index < len(options):
+        return index
+    return None
 
 
 def inventor_menu(header):
@@ -467,6 +472,9 @@ def inventor_menu(header):
 
     index = menu(header, options, INVENTORY_WIDTH)
 
+    if index is None or len(inventory) == 0:
+        return None
+    return inventory[index].item
 
 
 def handle_keys():
@@ -501,8 +509,11 @@ def handle_keys():
                         break
 
             if key_char == 'i':
-                inventor_menu('Press the key next to an item to use' +
-                              'it, or any other to cancel.\n')
+                chosen_item = inventor_menu('Press the key next to an ' +
+                                            'item to use it, or any ' +
+                                            'other to cancel.\n')
+                if chosen_item is not None:
+                    chosen_item.use()
 
             return 'didnt-take-turn'
 
