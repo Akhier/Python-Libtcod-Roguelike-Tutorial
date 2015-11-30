@@ -27,6 +27,8 @@ LIGHTNING_DAMAGE = 20
 LIGHTNING_RANGE = 5
 CONFUSE_RANGE = 8
 CONFUSE_NUM_TURNS = 10
+FIREBALL_RADIUS = 3
+FIREBALL_DAMAGE = 12
 
 FOV_ALGO = 0
 FOV_LIGHT_WALLS = True
@@ -110,6 +112,9 @@ class Object:
         dx = other.x - self.x
         dy = other.y - self.y
         return math.sqrt(dx ** 2 + dy ** 2)
+
+    def distance(self, x, y):
+        return math.sqrt((x - self.x) ** 2 + (y - self.y) ** 2)
 
     def send_to_back(self):
         global objects
@@ -328,9 +333,13 @@ def place_objects(room):
                 item_component = Item(use_function=cast_heal)
                 item = Object(x, y, '!', 'healing potion',
                               libtcod.violet, item=item_component)
-            elif dice < 70+15:
+            elif dice < 70+10:
                 item_component = Item(use_function=cast_lightning)
                 item = Object(x, y, '#', 'scroll of lightning bolt',
+                              libtcod.light_yellow, item=item_component)
+            elif dice < 70+10+10:
+                item_component = Item(use_function=cast_fireball)
+                item = Object(x, y, '#', 'scroll of fireball',
                               libtcod.light_yellow, item=item_component)
             else:
                 item_component = Item(use_function=cast_confuse)
@@ -574,6 +583,24 @@ def monster_death(monster):
     monster.send_to_back()
 
 
+def target_tile(max_range=None):
+    global key, mouse
+    while True:
+        libtcod.console_flush()
+        libtcod.sys_check_for_event(libtcod.EVENT_KEY_PRESS |
+                                    libtcod.EVENT_MOUSE, key, mouse)
+        render_all()
+
+        (x, y) = (mouse.cx, mouse.cy)
+
+        if mouse.rbutton_pressed or key.vk == libtcod.KEY_ESCAPE:
+            return (None, None)
+
+        if (mouse.lbutton_pressed and libtcod.map_is_in_fov(fov_map, x, y) and
+                (max_range is None or player.distance(x, y) <= max_range)):
+            return (x, y)
+
+
 def closest_monster(max_range):
     closest_enemy = None
     closest_dist = max_range + 1
@@ -608,6 +635,22 @@ def cast_lightning():
             str(LIGHTNING_DAMAGE) + ' hit points.',
             libtcod.light_blue)
     monster.fighter.take_damage(LIGHTNING_DAMAGE)
+
+
+def cast_fireball():
+    message('Left-click a target tile for the fireball,' +
+            ' or right-click to cancel.', libtcod.light_cyan)
+    (x, y) = target_tile()
+    if x is None:
+        return 'cancelled'
+    message('The fireball explodes, burning everything within ' +
+            str(FIREBALL_RADIUS) + ' tiles.', libtcod.orange)
+
+    for obj in objects:
+        if obj.distance(x, y) <= FIREBALL_RADIUS and obj.fighter:
+            message('The ' + obj.name + ' gets burned for ' +
+                    str(FIREBALL_DAMAGE) + ' hit points.', libtcod.orange)
+            obj.fighter.take_damage(FIREBALL_DAMAGE)
 
 
 def cast_confuse():
