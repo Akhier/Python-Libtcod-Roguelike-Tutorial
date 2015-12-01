@@ -259,7 +259,9 @@ def create_v_tunnel(y1, y2, x):
 
 
 def make_map():
-    global map, player
+    global map, objects
+
+    objects = [player]
 
     map = [[Tile(True) for y in range(MAP_HEIGHT)]
            for x in range(MAP_WIDTH)]
@@ -693,6 +695,66 @@ def cast_confuse():
             ' look vacant, as he starts to stumble around.',
             libtcod.light_green)
 
+
+def new_game():
+    global player, inventory, game_msgs, game_state
+
+    fighter_component = Fighter(hp=30, defense=2, power=5,
+                                death_function=player_death)
+    player = Object(0, 0, '@', 'player', libtcod.white, blocks=True,
+                    fighter=fighter_component)
+
+    make_map()
+    initialize_fov()
+
+    game_state = 'playing'
+    inventory = []
+
+    game_msgs = []
+
+    message('Welcome stranger. Prepare to perish in the ' +
+            'Tombs of the Ancient Kings.', libtcod.red)
+
+
+def initialize_fov():
+    global fov_recompute, fov_map
+    fov_recompute = True
+
+    fov_map = libtcod.map_new(MAP_WIDTH, MAP_HEIGHT)
+    for y in range(MAP_HEIGHT):
+        for x in range(MAP_WIDTH):
+            libtcod.map_set_properties(fov_map, x, y,
+                                       not map[x][y].block_sight,
+                                       not map[x][y].blocked)
+
+
+def play_game():
+    global key, mouse
+
+    player_action = None
+
+    mouse = libtcod.Mouse()
+    key = libtcod.Key()
+    while not libtcod.console_is_window_closed():
+        libtcod.sys_check_for_event(libtcod.EVENT_KEY_PRESS |
+                                    libtcod.EVENT_MOUSE,
+                                    key, mouse)
+        render_all()
+
+        libtcod.console_flush()
+
+        for object in objects:
+            object.clear()
+
+        player_action = handle_keys()
+        if player_action == 'exit':
+            break
+
+        if game_state == 'playing' and player_action != 'didnt-take-turn':
+            for object in objects:
+                if object.ai:
+                    object.ai.take_turn()
+
 libtcod.console_set_custom_font('terminal12x12_gs_ro.png',
                                 libtcod.FONT_TYPE_GREYSCALE |
                                 libtcod.FONT_LAYOUT_ASCII_INROW)
@@ -702,29 +764,11 @@ libtcod.sys_set_fps(LIMIT_FPS)
 con = libtcod.console_new(SCREEN_WIDTH, SCREEN_HEIGHT)
 panel = libtcod.console_new(SCREEN_WIDTH, PANEL_HEIGHT)
 
-fighter_component = Fighter(hp=30, defense=2, power=5,
-                            death_function=player_death)
-player = Object(0, 0, '@', 'Player', libtcod.white,
-                blocks=True, fighter=fighter_component)
-objects = [player]
-make_map()
-fov_map = libtcod.map_new(MAP_WIDTH, MAP_HEIGHT)
-for y in range(MAP_HEIGHT):
-    for x in range(MAP_WIDTH):
-        libtcod.map_set_properties(fov_map, x, y, not map[x][y].block_sight,
-                                   not map[x][y].blocked)
-
-fov_recompute = True
-game_state = 'playing'
-player_action = None
-inventory = []
-game_msgs = []
+new_game()
+play_game()
 
 message('Welcome stranger. Prepare to perish in the Tombs of ' +
         'the Ancient Kings.', libtcod.red)
-
-mouse = libtcod.Mouse()
-key = libtcod.Key()
 
 while not libtcod.console_is_window_closed():
     libtcod.sys_check_for_event(libtcod.EVENT_KEY_PRESS |
