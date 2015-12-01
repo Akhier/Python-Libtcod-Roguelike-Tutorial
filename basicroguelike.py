@@ -210,6 +210,13 @@ class Item:
             objects.remove(self.owner)
             message('You picked up a ' + self.owner.name + '.', libtcod.green)
 
+    def drop(self):
+        objects.append(self.owner)
+        inventory.remove(self.owner)
+        self.owner.x = player.x
+        self.owner.y = player.y
+        message('You dropped a ' + self.owner.name + '.', libtcod.yellow)
+
     def use(self):
         if self.use_function is None:
             message('The ' + self.owner.name + ' cannot be used.')
@@ -509,7 +516,7 @@ def menu(header, options, width):
     return None
 
 
-def inventor_menu(header):
+def inventory_menu(header):
     if len(inventory) == 0:
         options = ['Inventory is empty.']
     else:
@@ -554,11 +561,18 @@ def handle_keys():
                         break
 
             if key_char == 'i':
-                chosen_item = inventor_menu('Press the key next to an ' +
-                                            'item to use it, or any ' +
-                                            'other to cancel.\n')
+                chosen_item = inventory_menu('Press the key next to an ' +
+                                             'item to use it, or any ' +
+                                             'other to cancel.\n')
                 if chosen_item is not None:
                     chosen_item.use()
+
+            if key_char == 'd':
+                chosen_item = inventory_menu('Press the key next to an ' +
+                                             'to drop it, or any ' +
+                                             'other to cancel.\n')
+                if chosen_item is not None:
+                    chosen_item.drop()
 
             return 'didnt-take-turn'
 
