@@ -488,6 +488,8 @@ def menu(header, options, width):
 
     header_height = libtcod.console_get_height_rect(con, 0, 0, width,
                                                     SCREEN_HEIGHT, header)
+    if header == '':
+        header_height = 0
     height = len(options) + header_height
 
     window = libtcod.console_new(width, height)
@@ -511,6 +513,9 @@ def menu(header, options, width):
 
     libtcod.console_flush()
     key = libtcod.console_wait_for_keypress(True)
+
+    if key.vk == libtcod.KEY_ENTER and key.lalt:
+        libtcod.console_set_fullscreen(not libtcod.console_is_fullscreen())
 
     index = key.c - ord('a')
     if index >= 0 and index < len(options):
@@ -727,6 +732,8 @@ def initialize_fov():
                                        not map[x][y].block_sight,
                                        not map[x][y].blocked)
 
+    libtcod.console_clear(con)
+
 
 def play_game():
     global key, mouse
@@ -755,6 +762,29 @@ def play_game():
                 if object.ai:
                     object.ai.take_turn()
 
+
+def main_menu():
+    img = libtcod.image_load('terminal12x12_gs_ro.png')
+
+    while not libtcod.console_is_window_closed():
+        libtcod.image_blit_2x(img, 0, 0, 0)
+
+        libtcod.console_set_default_foreground(0, libtcod.light_yellow)
+        libtcod.console_print_ex(0, SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 - 4,
+                                 libtcod.BKGND_NONE, libtcod.CENTER,
+                                 'Tomb of the Ancient Kings')
+        libtcod.console_print_ex(0, SCREEN_WIDTH / 2, SCREEN_HEIGHT - 2,
+                                 libtcod.BKGND_NONE, libtcod.CENTER, 'Author')
+
+        choice = menu('', ['Play a new game',
+                           'Continue last game', 'Quit'], 24)
+
+        if choice == 0:
+            new_game()
+            play_game()
+        elif choice == 2:
+            break
+
 libtcod.console_set_custom_font('terminal12x12_gs_ro.png',
                                 libtcod.FONT_TYPE_GREYSCALE |
                                 libtcod.FONT_LAYOUT_ASCII_INROW)
@@ -764,8 +794,7 @@ libtcod.sys_set_fps(LIMIT_FPS)
 con = libtcod.console_new(SCREEN_WIDTH, SCREEN_HEIGHT)
 panel = libtcod.console_new(SCREEN_WIDTH, PANEL_HEIGHT)
 
-new_game()
-play_game()
+main_menu()
 
 message('Welcome stranger. Prepare to perish in the Tombs of ' +
         'the Ancient Kings.', libtcod.red)
