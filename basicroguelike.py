@@ -601,6 +601,17 @@ def target_tile(max_range=None):
             return (x, y)
 
 
+def target_monster(max_range=None):
+    while True:
+        (x, y) = target_tile(max_range)
+        if x is None:
+            return None
+
+        for obj in objects:
+            if obj.x == x and obj.y == y and obj.fighter and obj != player:
+                return obj
+
+
 def closest_monster(max_range):
     closest_enemy = None
     closest_dist = max_range + 1
@@ -655,8 +666,10 @@ def cast_fireball():
 
 def cast_confuse():
     monster = closest_monster(CONFUSE_RANGE)
+    message('Left-click an enemy to confuse it, or right-click to cancel.',
+            libtcod.light_cyan)
+    monster = target_monster(CONFUSE_RANGE)
     if monster is None:
-        message('No enemy is close enough to confuse', libtcod.red)
         return 'cancelled'
 
     old_ai = monster.ai
