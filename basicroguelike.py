@@ -1,6 +1,7 @@
 import libtcodpy as libtcod
 import math
 import textwrap
+import shelve
 
 SCREEN_WIDTH = 80
 SCREEN_HEIGHT = 50
@@ -536,6 +537,10 @@ def inventory_menu(header):
     return inventory[index].item
 
 
+def msgbox(text, width=50):
+    menu(text, [], width)
+
+
 def handle_keys():
     global key
     if key.vk == libtcod.KEY_ENTER and key.lalt:
@@ -701,6 +706,32 @@ def cast_confuse():
             libtcod.light_green)
 
 
+def save_game():
+    file = shelve.open('savegame.save', 'n')
+    file['map'] = map
+    file['objects'] = objects
+    file['player_index'] = objects.index(player)
+    file['inventory'] = inventory
+    file['game_msgs'] = game_msgs
+    file['game_state'] = game_state
+    file.close()
+
+
+def load_game():
+    global map, objects, player, inventory, game_msgs, game_state
+
+    file = shelve.open('savegame.save', 'r')
+    map = file['map']
+    objects = file['objects']
+    player = objects[file['player_index']]
+    inventory = file['inventory']
+    game_msgs = file['game_msgs']
+    game_state = file['game_state']
+    file.close()
+
+    initialize_fov()
+
+
 def new_game():
     global player, inventory, game_msgs, game_state
 
@@ -755,6 +786,7 @@ def play_game():
 
         player_action = handle_keys()
         if player_action == 'exit':
+            save_game()
             break
 
         if game_state == 'playing' and player_action != 'didnt-take-turn':
@@ -782,6 +814,13 @@ def main_menu():
         if choice == 0:
             new_game()
             play_game()
+        if choice == 1:
+            try:
+                load_game()
+            except:
+                msgbox('\n No saved game to load. \n', 24)
+                continue
+            play_game()
         elif choice == 2:
             break
 
@@ -795,24 +834,3 @@ con = libtcod.console_new(SCREEN_WIDTH, SCREEN_HEIGHT)
 panel = libtcod.console_new(SCREEN_WIDTH, PANEL_HEIGHT)
 
 main_menu()
-
-message('Welcome stranger. Prepare to perish in the Tombs of ' +
-        'the Ancient Kings.', libtcod.red)
-
-while not libtcod.console_is_window_closed():
-    libtcod.sys_check_for_event(libtcod.EVENT_KEY_PRESS |
-                                libtcod.EVENT_MOUSE, key, mouse)
-    render_all()
-    libtcod.console_flush()
-
-    for object in objects:
-        object.clear()
-
-    player_action = handle_keys()
-    if player_action == 'exit':
-        break
-
-    if game_state == 'playing' and player_action != 'didnt-take-turn':
-        for object in objects:
-            if object.ai:
-                object.ai.take_turn()
