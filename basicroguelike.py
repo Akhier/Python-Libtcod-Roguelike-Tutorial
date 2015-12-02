@@ -76,13 +76,14 @@ class Rect:
 class Object:
 
     def __init__(self, x, y, char, name, color, blocks=False,
-                 fighter=None, ai=None, item=None):
+                 always_visible=False, fighter=None, ai=None, item=None):
         self.x = x
         self.y = y
         self.char = char
         self.name = name
         self.color = color
         self.blocks = blocks
+        self.always_visible = always_visible
         self.fighter = fighter
         if self.fighter:
             self.fighter.owner = self
@@ -123,7 +124,8 @@ class Object:
         objects.insert(0, self)
 
     def draw(self):
-        if libtcod.map_is_in_fov(fov_map, self.x, self.y):
+        if (libtcod.map_is_in_fov(fov_map, self.x, self.y) or
+            (self.always_visible and map[self.x][self.y].explored)):
             libtcod.console_set_default_foreground(con, self.color)
             libtcod.console_put_char(con, self.x, self.y, self.char,
                                      libtcod.BKGND_NONE)
@@ -260,7 +262,7 @@ def create_v_tunnel(y1, y2, x):
 
 
 def make_map():
-    global map, objects
+    global map, objects, stairs
 
     objects = [player]
 
@@ -283,6 +285,7 @@ def make_map():
             if new_room.intersect(other_room):
                 failed = True
                 break
+
         if not failed:
             create_room(new_room)
             place_objects(new_room)
@@ -302,6 +305,11 @@ def make_map():
 
             rooms.append(new_room)
             num_rooms += 1
+
+    stairs = Object(new_x, new_y, '<', 'stairs',
+                    libtcod.white, always_visible=True)
+    objects.append(stairs)
+    stairs.send_to_back()
 
 
 def place_objects(room):
@@ -357,6 +365,7 @@ def place_objects(room):
                               libtcod.light_yellow, item=item_component)
             objects.append(item)
             item.send_to_back()
+            item.always_visible = True
 
 
 def render_bar(x, y, total_width, name, value, maximum, bar_color, back_color):
@@ -440,6 +449,8 @@ def render_all():
 
     render_bar(1, 1, BAR_WIDTH, 'HP', player.fighter.hp,
                player.fighter.max_hp, libtcod.light_red, libtcod.darker_red)
+    libtcod.console_print_ex(panel, 1, 3, libtcod.BKGND_NONE, libtcod.LEFT,
+                             'Dungeon level ' + str(dungeon_level))
 
     libtcod.console_set_default_foreground(con, libtcod.white)
     libtcod.console_print_ex(0, 1, SCREEN_HEIGHT - 2, libtcod.BKGND_NONE,
@@ -586,6 +597,10 @@ def handle_keys():
                 if chosen_item is not None:
                     chosen_item.drop()
 
+            if key_char == '<':
+                if stairs.x == player.x and stairs.y == player.y:
+                    next_level()
+
             return 'didnt-take-turn'
 
 
@@ -714,11 +729,14 @@ def save_game():
     file['inventory'] = inventory
     file['game_msgs'] = game_msgs
     file['game_state'] = game_state
+    file['stairs_index'] = objects.index(stairs)
+    file['dungeon_level'] = dungeon_level
     file.close()
 
 
 def load_game():
-    global map, objects, player, inventory, game_msgs, game_state
+    global map, objects, player, stairs, inventory, game_msgs, \
+           game_state, dungeon_level
 
     file = shelve.open('savegame.save', 'r')
     map = file['map']
@@ -727,19 +745,22 @@ def load_game():
     inventory = file['inventory']
     game_msgs = file['game_msgs']
     game_state = file['game_state']
+    stairs = objects[file['stairs_index']]
+    dungeon_level = file['dungeon_level']
     file.close()
 
     initialize_fov()
 
 
 def new_game():
-    global player, inventory, game_msgs, game_state
+    global player, inventory, game_msgs, game_state, dungeon_level
 
     fighter_component = Fighter(hp=30, defense=2, power=5,
                                 death_function=player_death)
     player = Object(0, 0, '@', 'player', libtcod.white, blocks=True,
                     fighter=fighter_component)
 
+    dungeon_level = 1
     make_map()
     initialize_fov()
 
@@ -750,6 +771,19 @@ def new_game():
 
     message('Welcome stranger. Prepare to perish in the ' +
             'Tombs of the Ancient Kings.', libtcod.red)
+
+
+def next_level():
+    global dungeon_level
+    message('You take a moment to rest, and recover your strength',
+             libtcod.light_violet)
+    player.fighter.heal(player.fighter.max_hp / 2)
+
+    dungeon_level += 1
+    message('After a rare moment of peace, you descend deeper into ' +
+            'the heart of the dungeon...', libtcod.red)
+    make_map()
+    initialize_fov()
 
 
 def initialize_fov():
