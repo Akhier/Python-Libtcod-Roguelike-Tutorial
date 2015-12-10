@@ -79,7 +79,8 @@ class Rect:
 class Object:
 
     def __init__(self, x, y, char, name, color, blocks=False,
-                 always_visible=False, fighter=None, ai=None, item=None):
+                 always_visible=False, fighter=None, ai=None,
+                 item=None, equipment=None):
         self.x = x
         self.y = y
         self.char = char
@@ -97,6 +98,13 @@ class Object:
 
         self.item = item
         if self.item:
+            self.item.owner = self
+
+        self.equipment = equipment
+        if self.equipment:
+            self.equipment.owner = self
+
+            self.item = Item()
             self.item.owner = self
 
     def move(self, dx, dy):
@@ -220,6 +228,9 @@ class Item:
             message('You picked up a ' + self.owner.name + '.', libtcod.green)
 
     def drop(self):
+        if self.owner.equipment:
+            self.owner.equipment.dequip()
+
         objects.append(self.owner)
         inventory.remove(self.owner)
         self.owner.x = player.x
@@ -227,11 +238,40 @@ class Item:
         message('You dropped a ' + self.owner.name + '.', libtcod.yellow)
 
     def use(self):
+        if self.owner.equipment:
+            self.owner.equipment.toggle_equip()
+            return
+
         if self.use_function is None:
             message('The ' + self.owner.name + ' cannot be used.')
         else:
             if self.use_function() != 'cancelled':
                 inventory.remove(self.owner)
+
+
+class Equipment:
+
+    def __init__(self, slot):
+        self.slot = slot
+        self.is_equipped = False
+
+    def toggle_equip(self):
+        if self.is_equipped:
+            self.dequip()
+        else:
+            self.equip()
+
+    def equip(self):
+        self.is_equipped = True
+        message('Equipped ' + self.owner.name + ' on ' +
+                self.slot + '.', libtcod.light_green)
+
+    def dequip(self):
+        if not self.is_equipped:
+            return
+        self.is_equipped = False
+        message('Dequipped ' + self.owner.name + ' from ' +
+                self.slot + '.', libtcod.yellow)
 
 
 def is_blocked(x, y):
@@ -359,6 +399,7 @@ def place_objects(room):
     item_chances['lightning'] = from_dungeon_level([[25, 4]])
     item_chances['fireball'] = from_dungeon_level([[25, 6]])
     item_chances['confuse'] = from_dungeon_level([[10, 2]])
+    item_chances['sword'] = 25
 
     num_monsters = libtcod.random_get_int(0, 0, max_monster)
 
@@ -411,6 +452,10 @@ def place_objects(room):
                 item_component = Item(use_function=cast_confuse)
                 item = Object(x, y, '#', 'scroll of confusion',
                               libtcod.light_yellow, item=item_component)
+            elif choice == 'sword':
+                equipment_component = Equipment(slot='right hand')
+                item = Object(x, y, '/', 'sword', libtcod.sky,
+                              equipment=equipment_component)
             objects.append(item)
             item.send_to_back()
             item.always_visible = True
