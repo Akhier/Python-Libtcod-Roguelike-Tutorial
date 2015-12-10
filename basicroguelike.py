@@ -781,8 +781,8 @@ def check_level_up():
         message('Your battle skills grow stronger. You reached level ' +
                 str(player.level) + '.', libtcod.yellow)
 
-    choice = None
-    while choice is None:
+        choice = None
+        while choice is None:
             choice = menu('Level up! Choose a stat to raise:\n',
                           ['Constitution (+20 HP, from ' +
                           str(player.fighter.max_hp) + ')',
@@ -792,13 +792,13 @@ def check_level_up():
                           str(player.fighter.defense) + ')'],
                           LEVEL_SCREEN_WIDTH)
 
-            if choice == 0:
-                player.fighter.max_hp += 20
-                player.fighter.hp += 20
-            elif choice == 1:
-                player.fighter.power += 1
-            elif choice == 2:
-                player.fighter.defense += 1
+        if choice == 0:
+            player.fighter.max_hp += 20
+            player.fighter.hp += 20
+        elif choice == 1:
+            player.fighter.power += 1
+        elif choice == 2:
+            player.fighter.defense += 1
 
 
 def player_death(player):
@@ -1021,6 +1021,8 @@ def play_game():
         render_all()
 
         libtcod.console_flush()
+
+        check_level_up()
 
         for object in objects:
             object.clear()
