@@ -22,16 +22,14 @@ LEVEL_SCREEN_WIDTH = 40
 ROOM_MAX_SIZE = 10
 ROOM_MIN_SIZE = 6
 MAX_ROOMS = 30
-MAX_ROOM_MONSTERS = 3
-MAX_ROOM_ITEMS = 2
 
-HEAL_AMOUNT = 4
-LIGHTNING_DAMAGE = 20
+HEAL_AMOUNT = 40
+LIGHTNING_DAMAGE = 40
 LIGHTNING_RANGE = 5
 CONFUSE_RANGE = 8
 CONFUSE_NUM_TURNS = 10
 FIREBALL_RADIUS = 3
-FIREBALL_DAMAGE = 12
+FIREBALL_DAMAGE = 25
 
 LEVEL_UP_BASE = 200
 LEVEL_UP_FACTOR = 150
@@ -340,15 +338,37 @@ def random_choice(chances_dict):
     return strings[random_choice_index(chances)]
 
 
+def from_dungeon_level(table):
+    for (value, level) in reversed(table):
+        if dungeon_level >= level:
+            return value
+    return 0
+
+
 def place_objects(room):
-    num_monsters = libtcod.random_get_int(0, 0, MAX_ROOM_MONSTERS)
+    max_monster = from_dungeon_level([[2, 1], [3, 4], [5, 6]])
+
+    monster_chances = {}
+    monster_chances['orc'] = 80
+    monster_chances['troll'] = from_dungeon_level([[15, 3], [30, 5], [60, 7]])
+
+    max_items = from_dungeon_level([[1, 1], [2, 4]])
+
+    item_chances = {}
+    item_chances['heal'] = 35
+    item_chances['lightning'] = from_dungeon_level([[25, 4]])
+    item_chances['fireball'] = from_dungeon_level([[25, 6]])
+    item_chances['confuse'] = from_dungeon_level([[10, 2]])
+
+    num_monsters = libtcod.random_get_int(0, 0, max_monster)
 
     for i in range(num_monsters):
         x = libtcod.random_get_int(0, room.x1 + 1, room.x2 - 1)
         y = libtcod.random_get_int(0, room.y1 + 1, room.y2 - 1)
 
         if not is_blocked(x, y):
-            if libtcod.random_get_int(0, 0, 100) < 80:
+            choice = random_choice(monster_chances)
+            if choice == 'orc':
                 fighter_component = Fighter(hp=10, defense=0, power=3, xp=35,
                                             death_function=monster_death)
                 ai_component = BasicMonster()
@@ -356,7 +376,7 @@ def place_objects(room):
                 monster = Object(x, y, 'o', 'orc', libtcod.desaturated_green,
                                  blocks=True, fighter=fighter_component,
                                  ai=ai_component)
-            else:
+            elif choice == 'troll':
                 fighter_component = Fighter(hp=16, defense=1, power=4, xp=100,
                                             death_function=monster_death)
                 ai_component = BasicMonster()
@@ -367,27 +387,27 @@ def place_objects(room):
 
             objects.append(monster)
 
-    num_items = libtcod.random_get_int(0, 0, MAX_ROOM_ITEMS)
+    num_items = libtcod.random_get_int(0, 0, max_items)
 
     for i in range(num_items):
         x = libtcod.random_get_int(0, room.x1 + 1, room.x2 - 1)
         y = libtcod.random_get_int(0, room.y1 + 1, room.y2 - 1)
 
         if not is_blocked(x, y):
-            dice = libtcod.random_get_int(0, 0, 100)
-            if dice < 70:
+            choice = random_choice(item_chances)
+            if choice == 'heal':
                 item_component = Item(use_function=cast_heal)
                 item = Object(x, y, '!', 'healing potion',
                               libtcod.violet, item=item_component)
-            elif dice < 70+10:
+            elif choice == 'lightning':
                 item_component = Item(use_function=cast_lightning)
                 item = Object(x, y, '#', 'scroll of lightning bolt',
                               libtcod.light_yellow, item=item_component)
-            elif dice < 70+10+10:
+            elif choice == 'fireball':
                 item_component = Item(use_function=cast_fireball)
                 item = Object(x, y, '#', 'scroll of fireball',
                               libtcod.light_yellow, item=item_component)
-            else:
+            elif choice == 'confuse':
                 item_component = Item(use_function=cast_confuse)
                 item = Object(x, y, '#', 'scroll of confusion',
                               libtcod.light_yellow, item=item_component)
@@ -852,7 +872,7 @@ def new_game():
 def next_level():
     global dungeon_level
     message('You take a moment to rest, and recover your strength',
-             libtcod.light_violet)
+            libtcod.light_violet)
     player.fighter.heal(player.fighter.max_hp / 2)
 
     dungeon_level += 1
