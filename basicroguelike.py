@@ -150,12 +150,30 @@ class Object:
 class Fighter:
 
     def __init__(self, hp, defense, power, xp, death_function=None):
-        self.max_hp = hp
+        self.base_max_hp = hp
         self.hp = hp
-        self.defense = defense
-        self.power = power
+        self.base_defense = defense
+        self.base_power = power
         self.xp = xp
         self.death_function = death_function
+
+    @property
+    def power(self):
+        bonus = sum(equipment.power_bonus for
+                    equipment in get_all_equipped(self.owner))
+        return self.base_power + bonus
+
+    @property
+    def defense(self):
+        bonus = sum(equipment.defense_bonus for
+                    equipment in get_all_equipped(self.owner))
+        return self.base_defense + bonus
+
+    @property
+    def max_hp(self):
+        bonus = sum(equipment.max_hp_bonus for
+                    equipment in get_all_equipped(self.owner))
+        return self.base_max_hp + bonus
 
     def attack(self, target):
         damage = self.power - target.fighter.defense
@@ -255,7 +273,10 @@ class Item:
 
 class Equipment:
 
-    def __init__(self, slot):
+    def __init__(self, slot, power_bonus=0, defense_bonus=0, max_hp_bonus=0):
+        self.power_bonus = power_bonus
+        self.defense_bonus = defense_bonus
+        self.max_hp_bonus = max_hp_bonus
         self.slot = slot
         self.is_equipped = False
 
@@ -287,6 +308,17 @@ def get_equipped_in_slot(slot):
         if (obj.equipment and obj.equipment.slot == slot and
                 obj.equipment.is_equipped):
             return obj.equipment
+
+
+def get_all_equipped(obj):
+    if obj == player:
+        equipped_list = []
+        for item in inventory:
+            if item.equipment and item.equipment.is_equipped:
+                equipped_list.append(item.equipment)
+        return equipped_list
+    else:
+        return []
 
 
 def is_blocked(x, y):
@@ -414,7 +446,8 @@ def place_objects(room):
     item_chances['lightning'] = from_dungeon_level([[25, 4]])
     item_chances['fireball'] = from_dungeon_level([[25, 6]])
     item_chances['confuse'] = from_dungeon_level([[10, 2]])
-    item_chances['sword'] = 25
+    item_chances['sword'] = from_dungeon_level([[5, 4]])
+    item_chances['shield'] = from_dungeon_level([[15, 8]])
 
     num_monsters = libtcod.random_get_int(0, 0, max_monster)
 
@@ -468,8 +501,14 @@ def place_objects(room):
                 item = Object(x, y, '#', 'scroll of confusion',
                               libtcod.light_yellow, item=item_component)
             elif choice == 'sword':
-                equipment_component = Equipment(slot='right hand')
+                equipment_component = Equipment(slot='right hand',
+                                                power_bonus=3)
                 item = Object(x, y, '/', 'sword', libtcod.sky,
+                              equipment=equipment_component)
+            elif choice == 'shield':
+                equipment_component = Equipment(slot='right hand',
+                                                defense_bonus=1)
+                item = Object(x, y, '[', 'shield', libtcod.darker_orange,
                               equipment=equipment_component)
             objects.append(item)
             item.send_to_back()
@@ -932,6 +971,13 @@ def new_game():
 
     message('Welcome stranger. Prepare to perish in the ' +
             'Tombs of the Ancient Kings.', libtcod.red)
+
+    equipment_component = Equipment(slot='right hand', power_bonus=2)
+    obj = Object(0, 0, '-', 'dagger', libtcod.sky,
+                 equipment=equipment_component)
+    inventory.append(obj)
+    equipment_component.equip()
+    obj.always_visible = True
 
 
 def next_level():
