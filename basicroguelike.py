@@ -227,6 +227,10 @@ class Item:
             objects.remove(self.owner)
             message('You picked up a ' + self.owner.name + '.', libtcod.green)
 
+            equipment = self.owner.equipment
+            if equipment and get_equipped_in_slot(equipment.slot) is None:
+                equipment.equip()
+
     def drop(self):
         if self.owner.equipment:
             self.owner.equipment.dequip()
@@ -262,6 +266,10 @@ class Equipment:
             self.equip()
 
     def equip(self):
+        old_equipment = get_equipped_in_slot(self.slot)
+        if old_equipment is not None:
+            old_equipment.dequip()
+
         self.is_equipped = True
         message('Equipped ' + self.owner.name + ' on ' +
                 self.slot + '.', libtcod.light_green)
@@ -272,6 +280,13 @@ class Equipment:
         self.is_equipped = False
         message('Dequipped ' + self.owner.name + ' from ' +
                 self.slot + '.', libtcod.yellow)
+
+
+def get_equipped_in_slot(slot):
+    for obj in inventory:
+        if (obj.equipment and obj.equipment.slot == slot and
+                obj.equipment.is_equipped):
+            return obj.equipment
 
 
 def is_blocked(x, y):
@@ -632,7 +647,12 @@ def inventory_menu(header):
     if len(inventory) == 0:
         options = ['Inventory is empty.']
     else:
-        options = [item.name for item in inventory]
+        options = []
+        for item in inventory:
+            text = item.name
+            if item.equipment and item.equipment.is_equipped:
+                text = text + ' (on ' + item.equipment.slot + ')'
+            options.append(text)
 
     index = menu(header, options, INVENTORY_WIDTH)
 
